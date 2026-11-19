@@ -6,6 +6,7 @@ The grid is only an optimization proxy: every before/after number is recomputed 
 (hoiaudit.metrics.penetration_metrics).
 """
 import hashlib
+import os
 from pathlib import Path
 
 import numpy as np
@@ -39,7 +40,9 @@ def build(V, F, res_mm=RES_MM, pad_mm=PAD_MM, cache_dir=None):
     g = {"G": out.reshape(*n).astype(np.float32), "lo": lo, "h": h}
     if cache_dir is not None:
         Path(cache_dir).mkdir(parents=True, exist_ok=True)
-        np.savez_compressed(p, **g)
+        tmp = p.with_name(f"{p.stem}.{os.getpid()}.tmp.npz")   # atomic: parallel processes may build the same grid
+        np.savez_compressed(tmp, **g)
+        os.replace(tmp, p)
     return g
 
 

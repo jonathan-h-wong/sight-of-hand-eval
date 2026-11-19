@@ -1,0 +1,9 @@
+numpy
+scipy
+pandas
+pyarrow
+libigl
+trimesh
+pyyaml
+boto3
+torch>=2.1

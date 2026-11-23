@@ -1,8 +1,9 @@
 # hoi-audit
 
 Minimal, dataset-agnostic **hand-object penetration audit** for MANO-annotated grasp datasets. This is the extracted
-core of `xray-hands/analysis` (`hoi_metrics.py`, `mano_np.py` are unchanged ports). It covers **GRAB**, **DexYCB** and
-**GraspXL**, and ARCTIC slots in as one more source.
+core of `xray-hands/analysis` (`hoi_metrics.py`, `mano_np.py` are unchanged ports). It covers **ARCTIC**, **GRAB**,
+**DexYCB**, **GraspXL**, **HO3D v3**, **HOI4D** (rigid objects) and **OakInk-Image** (once its annotations are uploaded),
+and turns each audit into a **physically grounded subset** that a training or evaluation loader can fetch.
 
 The raw data is never modified. The audit writes a per-frame mask that indexes straight into the raw files.
 
@@ -16,10 +17,18 @@ hoiaudit/
     grab.py           GRAB      (subject v_template, flat_hand_mean=True, 120 fps, both hands)
     dexycb.py         DexYCB    (PCA-45, flat_hand_mean=False, subject betas, all scene objects)
     graspxl.py        GraspXL   (betas 0; flat_hand_mean False for mano_dataset_N, True for mano_tabletop)
+    ho3d.py           HO3D v3   (absolute 48-d pose = flat_hand_mean=True; evaluation split from the released GT verts)
+    hoi4d.py          HOI4D     (manopth flat_hand_mean=True, both hands; rigid categories; Euler-XYZ object poses)
+    oakink.py         OakInk    (released 778-vertex hands + T_c_o; one camera per frame; needs anno_v2_1.zip)
+  subset.py           grounded-subset criteria, selection, raw/ pointers
 scripts/
   prepare_data.sh     pull only what the audit needs from s3://xray-hands/raw (no images)
   fetch_graspxl_sample.py   stratified GraspXL sample via ranged reads (no 80 GB download)
-  audit.py            the one central script: --dataset {grab,dexycb,graspxl}
+  audit.py            the one central script: --dataset {arctic,grab,dexycb,graspxl,ho3d,hoi4d,oakink}
+  ho3d_eval_verts.py  split HO3D's evaluation_verts.json per sequence (used by prepare_data.sh)
+  build_subset.py     audit -> grounded subset index (+ --publish to S3)
+  fetch_grounded.py   subset index -> local labels (hand meshes, object poses/meshes) and images
+  runpod/audit_bootstrap.sh   CPU pod job: prepare, audit, publish, build subsets
 ```
 
 ## Run
@@ -51,6 +60,44 @@ aws s3 sync out/grab s3://xray-hands/eval/grab/penetration_v1/   # etc.
 
 Frames without a valid GT hand (DexYCB `pose_m == 0`) are absent from the mask. To use a different threshold, read
 `pen_max_mm` and threshold it yourself; no rerun is needed.
+
+## Physically grounded subsets
+
+The audit measures; the subset decides. `scripts/build_subset.py` applies a `Criteria` (hoiaudit/subset.py) to an audit
+table and writes an index of the grounded hand-frames, each with pointers back into `raw/`:
+
+| criterion | default | rule |
+|---|---|---|
+| contact | 5 mm | `min_sd_mm <= contact_mm` (the audit's contact definition) |
+| penetration | 1 mm | `pen_max_mm <= pen_mm` |
+| gap | 2 mm | `min_sd_mm <= gap_mm`, so the hand touches instead of hovering |
+| jitter | off | `rel_hf_mm <= jitter_mm` (frames without a jitter estimate pass) |
+| run | 1 | keep runs of at least `min_run` consecutive grounded frames |
+| labels | original | `rectified` uses the ARCTIC/DexYCB pseudo-GT (`scripts/rectify.py`), unresolved frames excluded |
+
+```bash
+python scripts/build_subset.py --all --publish        # every audited dataset: original 1 mm, original 2 mm, rectified 2 mm
+python scripts/build_subset.py --dataset hoi4d --pen-mm 1 --min-run 15 --publish
+```
+
+Published at `s3://xray-hands/eval/<ds>/grounded_v1/<tag>/` (`tag` like `original_pen1_gap2`):
+`index.parquet` (one row per grounded seq/hand/frame: audit metrics, `run_id`, `run_len`, `label_key`/`label_member`,
+`image_key`/`image_member`/`image_frame`; `rectified_key` for rectified labels) and `summary.json` (counts, runs,
+per-object frames).
+
+Fetch the frames themselves with `scripts/fetch_grounded.py`. It reruns the dataset's source loader on the prepared
+labels for just the grounded frames and writes hand vertices, object poses and object meshes, plus the images
+straight from the raw archives (ARCTIC and DexYCB tars streamed once, HO3D/OakInk zips by ranged reads, HOI4D videos
+decoded at the grounded frames):
+
+```bash
+bash scripts/prepare_data.sh data arctic
+python scripts/fetch_grounded.py --dataset arctic --tag original_pen1_gap2 --label-root data/arctic \
+    --out grounded/arctic --images cams --cams 0          # egocentric view only
+```
+
+In Python, `subset.read_index(ds, tag)` returns the published index, and `subset.build_index(ds, Criteria(...))`
+builds one with any other thresholds without rerunning the audit.
 
 ## Conventions and how they were checked
 

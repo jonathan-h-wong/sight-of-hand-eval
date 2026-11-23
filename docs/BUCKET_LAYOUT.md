@@ -2,12 +2,16 @@
 
 ```
 raw/<dataset>/...                       untouched upstream downloads (zips/tars exactly as released)
-  arctic/   dexycb/   grab/   graspxl/   mano/
+  arctic/   dexycb/   grab/   graspxl/   mano/   ho3d_v3/   hoi4d/   oakink_v1/   mow/
+  hoisdf/   baselines/   polyhaven/   ambientcg/
 eval/<dataset>/penetration_v1/          audit output over raw/ (this repo: scripts/audit.py)
   mask.parquet    seq, hand, frame, pen_max_mm, min_sd_mm, contact, grounded(<2 mm)
   frames.parquet  all per-frame metrics
   summary.json
-eval/graspxl/penetration_v1_sample/      same, over a stratified 8,436-sequence sample (+ sample_manifest.json)
+eval/graspxl/penetration_v1_sample/      same, over a stratified 8,436-sequence sample (+ sample_manifest.json); biased,
+                                        drawn while mano_dataset_N.part00 was missing
+eval/graspxl/penetration_v2_sample/      unbiased stratified sample over the complete archives (audit_bootstrap.sh)
+eval/<dataset>/grounded_v1/<tag>/       physically grounded subset: index.parquet + summary.json (build_subset.py)
 eval/<dataset>/benchmarks/<run_id>/     model benchmark runs on an eval subset (predictions, per-frame scores)
 train/                                  (empty)
 ```
@@ -46,3 +50,12 @@ aws s3 rm --recursive s3://xray-hands/eval/arctic/20261113_ego_s5/
 ```
 
 `baselines/pod_env.sh` and `baselines/README.md` in xray-hands still point at `s3://xray-hands/eval/arctic`.
+
+## State on 2026-11-23
+
+* `raw/graspxl/mano_dataset_{1,2,3}.zip.part00` are now present: all 5,964,698 sequences of mano_dataset_1-3 are readable (shift 0); mano_tabletop adds 868,046.
+* `raw/arctic` holds the full release (`data/*.zip`, `unpacked/arctic_data/data/{images,cropped_images}/sXX/<seq>.tar`).
+* Added: `raw/ho3d_v3` (HO3D_v3.zip + HO3D_V3_GT), `raw/hoi4d` (hand pose, annotations, RGB release, CAD, cameras;
+  no depth), `raw/oakink_v1` (Hugging Face release; the image annotations `anno_v2_1.zip` are Google-Form gated and
+  missing), `raw/mow`, `raw/hoisdf`, `raw/baselines`, `raw/polyhaven`, `raw/ambientcg`.
+* `eval/arctic/penetration_v1/frames.parquet` exists (301 sequences).

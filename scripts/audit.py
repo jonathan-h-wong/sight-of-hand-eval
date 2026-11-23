@@ -15,6 +15,9 @@ arrays). Re-threshold any time from pen_max_mm without rerunning.
     python scripts/audit.py --dataset grab    --root data/grab/unz          --out out/grab
     python scripts/audit.py --dataset dexycb  --root data/dexycb            --out out/dexycb
     python scripts/audit.py --dataset graspxl --root data/graspxl           --out out/graspxl
+    python scripts/audit.py --dataset ho3d    --root data/ho3d              --out out/ho3d
+    python scripts/audit.py --dataset hoi4d   --root data/hoi4d             --out out/hoi4d
+    python scripts/audit.py --dataset oakink  --root data/oakink            --out out/oakink
 """
 import argparse
 import importlib
@@ -31,7 +34,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from hoiaudit import metrics  # noqa: E402
 from hoiaudit.sources import common  # noqa: E402
 
-DATASETS = ("arctic", "grab", "dexycb", "graspxl")
+DATASETS = ("arctic", "grab", "dexycb", "graspxl", "ho3d", "hoi4d", "oakink")
 _G = {}
 
 
@@ -72,8 +75,13 @@ def main():
     tasks = src.list_tasks(a.root)
     if a.limit:
         tasks = [tasks[i] for i in np.linspace(0, len(tasks) - 1, min(a.limit, len(tasks))).astype(int)]
-    # biggest first so the pool does not end on one long straggler
-    tasks.sort(key=lambda t: -os.path.getsize(t if os.path.isfile(t) else os.path.join(t, "pose.npz")))
+    # biggest first so the pool does not end on one long straggler (size proxy: the task file, else 0)
+    def _size(t):
+        for p in (t, os.path.join(t, "pose.npz")):
+            if os.path.isfile(p):
+                return os.path.getsize(p)
+        return 0
+    tasks.sort(key=lambda t: -_size(t))
     print(f"{a.dataset}: {len(tasks)} sequences, {a.workers} workers, stride {a.stride}", flush=True)
 
     # checkpointing: finished sequences are flushed to OUT/parts/*.parquet; a rerun skips tasks already there

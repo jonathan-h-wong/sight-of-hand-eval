@@ -15,7 +15,13 @@ log() { echo "[$(date -u +%FT%TZ)] $*" | tee -a $R/status/pod.log; }
 push_status() { aws s3 sync --quiet $R/status $W/status; }
 finish() {  # $1 = DONE|FAILED
   log "$1"; echo "$1" > $R/status/STATE; push_status
-  if [ "$1" = DONE ]; then runpodctl remove pod "$RUNPOD_POD_ID"; else runpodctl stop pod "$RUNPOD_POD_ID"; fi
+  local m; [ "$1" = DONE ] && m=podTerminate || m=podStop
+  if command -v runpodctl > /dev/null; then
+    if [ "$1" = DONE ]; then runpodctl remove pod "$RUNPOD_POD_ID"; else runpodctl stop pod "$RUNPOD_POD_ID"; fi
+  elif [ -n "${RUNPOD_API_KEY:-}" ]; then  # images without runpodctl: the pod-scoped key RunPod injects
+    curl -s -H 'Content-Type: application/json' -H "Authorization: Bearer $RUNPOD_API_KEY" https://api.runpod.io/graphql \
+      -d "{\"query\":\"mutation { $m(input: {podId: \\\"$RUNPOD_POD_ID\\\"}) }\"}" > /dev/null
+  fi  # otherwise whoever launched the pod watches $W/status/STATE and removes it
   sleep infinity
 }
 publish() {  # ds out_dir s3_prefix

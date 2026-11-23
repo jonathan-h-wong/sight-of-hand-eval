@@ -1,5 +1,5 @@
 """Split HO3D v3's released evaluation GT (HO3D_V3_GT/evaluation_verts.json, one 778x3 list per line of
-evaluation.txt, OpenGL frame, metres) into ROOT/evaluation_verts/<seq>.npz {frames, verts} for hoiaudit/sources/ho3d.py.
+evaluation.txt, same camera frame as the meta, metres) into ROOT/evaluation_verts/<seq>.npz {frames, verts} for hoiaudit/sources/ho3d.py.
 
     python scripts/ho3d_eval_verts.py --root data/ho3d --gt data/ho3d_gt/evaluation_verts.json
 """

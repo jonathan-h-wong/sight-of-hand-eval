@@ -15,6 +15,10 @@ Conventions (leolyliu/HOI4D-Instructions README):
            volume, cube root) is reported per frame so a scale mismatch shows up in the audit.
   Only the seven rigid categories are loaded (Bottle, Bowl, Chair, Kettle, Knife, Mug, ToyCar). Articulated
   categories pose each part separately and are skipped (list_tasks filters them).
+Checks (6 random rigid sequences, 2026-11-23): MANO joints reprojected with camera_params/<cam>/intrin.npy land on
+the released kps2D at 3.9 px median with flat_hand_mean=True (36 px with False). Of the Euler orders XYZ / xyz / ZYX /
+zyx, 'XYZ' puts the hand closest to the object surface (median |min_sd| 9 mm vs 23-28 mm) with the highest contact
+rate; `dim_ratio` is 1.0-1.3. Contact frames still sit ~5-7 mm inside the object at the median: the labels penetrate.
 Mask key: <path>; frame = int(<frame>), the frame index of align_rgb/image.mp4.
 """
 import json
@@ -98,7 +102,7 @@ def load(task, stride=1):
         except Exception:
             continue
         T_wo[i] = T_from(R[None], t[None] * 1000.0)[0]
-        dim_ratio[i] = float(np.prod(np.sort(ext)) / max(1e-9, np.prod(np.sort(dim * 1000.0))) ** (1 / 3))
+        dim_ratio[i] = float((np.prod(ext) / max(1e-9, np.prod(dim * 1000.0))) ** (1 / 3))
     hands = {}
     for side in ("right", "left"):
         hf = hand_files[side]

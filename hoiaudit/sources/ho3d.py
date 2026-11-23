@@ -11,9 +11,13 @@ Conventions (shreyashampali/ho3d vis_HO3D.py):
            m.fullpose directly, i.e. no hands_mean -> flat_hand_mean=True), betas = handBeta, + handTrans.
            Train split only; frames whose handPose is None are untracked.
            Evaluation split: meta carries no hand pose; the released GT vertices (evaluation_verts.json, in the
-           order of evaluation.txt) are in the challenge's OpenGL frame and are flipped back (y, z) * -1.
+           order of evaluation.txt) are used as given. They are in the same camera frame as the meta (checked: their
+           MANO root joint matches the meta's handJoints3D root to 0.9 mm median on AP10; with an OpenGL y/z flip
+           it is 908 mm off), not in the OpenGL frame the challenge predictions use.
   object : verts = v @ Rodrigues(objRot).T + objTrans  (world = R v + t), both splits.
   Everything is in the camera frame (OpenCV axes for meta), metres; ~30 fps.
+  Check (train, 90 frames of ABF10/ABF11): MANO joints match the meta's handJoints3D at 3.3 mm median with
+  flat_hand_mean=True (36 mm with False).
 Mask key: <split>/<seq>; frame = int(<frame>) (the meta / rgb file stem).
 """
 import pickle
@@ -25,7 +29,6 @@ from ..metrics import Part, Sequence
 from .common import T_from, aa_to_R, load_mesh, mano
 
 FPS = 30.0
-GL = np.array([1.0, -1.0, -1.0])  # OpenGL <-> OpenCV axis flip
 _PARTS = {}
 
 
@@ -80,7 +83,7 @@ def load(task, stride=1):
         pos = {int(f): i for i, f in enumerate(z["frames"])}
         valid = np.array([f in pos for f in fr]) & has_obj
         for i in np.where(valid)[0]:
-            V[i] = z["verts"][pos[fr[i]]] * GL * 1000.0
+            V[i] = z["verts"][pos[fr[i]]] * 1000.0
     extra = {"split": np.full(n, split), "object": np.full(n, name)}
     return Sequence("ho3d", f"{split}/{seq}", FPS, stride, fr, T_wo, [_part(root, name)], None,
                     {"right": (V, valid)}, extra)

@@ -68,7 +68,7 @@ def load(task, stride=1):
 
     V = np.full((n, 778, 3), np.nan)
     if split == "train":
-        valid = np.array([m.get("handPose") is not None for m in metas]) & has_obj
+        valid = np.array([m.get("handPose") is not None for m in metas], dtype=bool) & has_obj
         if valid.any():
             idx = np.where(valid)[0]
             pose = np.stack([np.asarray(metas[i]["handPose"], np.float64).ravel() for i in idx])
@@ -81,7 +81,7 @@ def load(task, stride=1):
     else:
         z = np.load(root / "evaluation_verts" / f"{seq}.npz")
         pos = {int(f): i for i, f in enumerate(z["frames"])}
-        valid = np.array([f in pos for f in fr]) & has_obj
+        valid = np.array([f in pos for f in fr], dtype=bool) & has_obj
         for i in np.where(valid)[0]:
             V[i] = z["verts"][pos[fr[i]]] * 1000.0
     extra = {"split": np.full(n, split), "object": np.full(n, name)}

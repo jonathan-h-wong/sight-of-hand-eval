@@ -106,7 +106,7 @@ def load(task, stride=1):
     hands = {}
     for side in ("right", "left"):
         hf = hand_files[side]
-        valid = np.array([f in hf for f in fr]) & np.isfinite(T_wo).all((1, 2))
+        valid = np.array([f in hf for f in fr], dtype=bool) & np.isfinite(T_wo).all((1, 2))
         if not valid.any():
             continue
         V = np.full((n, 778, 3), np.nan)

@@ -140,6 +140,13 @@ def locate(dataset, idx, labels="original"):
         idx["label_key"] = "raw/graspxl/" + arch + ".zip"  # mano_dataset_N: the .part00 + .part01 concatenation
         idx["label_member"] = s + ".npy"
     elif dataset == "ho3d":
+        # HO3D v3 films most captures from up to 5 cameras: <name>1<k> (two trailing digits) is capture <name>1 seen
+        # from camera k, with identical poses in each camera frame (checked: equal penetration on every frame).
+        # Evaluate or bootstrap per capture, not per sequence.
+        name = s.str.split("/").str[1]
+        two = name.str.match(r"^[A-Za-z]+\d\d$")
+        idx["capture"] = np.where(two, name.str[:-1], name)
+        idx["camera"] = np.where(two, name.str[-1], "0").astype(int)
         idx["label_key"] = "raw/ho3d_v3/HO3D_v3/HO3D_v3.zip"
         idx["label_member"] = s + "/meta/" + idx.frame.map("{:04d}".format) + ".pkl"
         idx["image_frame"] = idx.frame

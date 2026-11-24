@@ -19,7 +19,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from hoiaudit import subset  # noqa: E402
 
 # the plan's frozen sweep: headline 1 mm on original labels, 2 mm as secondary, rectified 2 mm where available
-STANDARD = [dict(pen_mm=1.0), dict(pen_mm=2.0), dict(pen_mm=2.0, labels="rectified")]
+STANDARD = [dict(pen_mm=1.0), dict(pen_mm=2.0), dict(pen_mm=2.0, labels="rectified"),
+            # "free": penetration alone, any hand-object distance, so approach, release and hover frames stay in and
+            # runs cover whole interactions (the `contact` column tells them apart)
+            dict(pen_mm=1.0, gap_mm=5.0, include_free=True), dict(pen_mm=2.0, gap_mm=5.0, include_free=True),
+            dict(pen_mm=2.0, gap_mm=5.0, include_free=True, labels="rectified")]
 
 
 def build(ds, c, audit, out, publish):

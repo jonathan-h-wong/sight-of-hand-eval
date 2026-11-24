@@ -47,6 +47,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--dataset", choices=sorted(subset.AUDIT))
     ap.add_argument("--all", action="store_true", help="every dataset whose audit exists, STANDARD criteria")
+    ap.add_argument("--only", help="with --all: comma-separated datasets to restrict to")
     ap.add_argument("--audit", type=Path, help="local audit frames.parquet (default: the published one on S3)")
     ap.add_argument("--labels", choices=["original", "rectified"], default="original")
     ap.add_argument("--pen-mm", type=float, default=1.0)
@@ -61,7 +62,10 @@ def main():
     if a.all:
         import boto3
         s3 = boto3.client("s3")
+        only = set(a.only.split(",")) if a.only else None
         for ds, key in subset.AUDIT.items():
+            if only and ds not in only:
+                continue
             try:
                 s3.head_object(Bucket=subset.BUCKET, Key=key)
             except Exception:

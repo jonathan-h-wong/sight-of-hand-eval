@@ -72,5 +72,5 @@ for ds in $DATASETS; do
 done
 
 log "subsets"
-python -W ignore scripts/build_subset.py --all --publish --out $R/out > $R/status/subsets.log 2>&1 || finish FAILED
+python -W ignore scripts/build_subset.py --all --only "$(echo $DATASETS | tr ' ' ,)" --publish --out $R/out > $R/status/subsets.log 2>&1 || finish FAILED
 finish DONE

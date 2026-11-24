@@ -52,7 +52,10 @@ for ds in $DATASETS; do
     else
       log "prepare $ds"; push_status
       bash scripts/prepare_data.sh $R/data $ds > $R/status/prep_$ds.log 2>&1 || finish FAILED
-      [ -d $R/data/$ds ] && tar -cf - -C $R/data $ds | aws s3 cp --quiet - $W/cache/$ds.tar
+      # cache only a usable prep (an oakink prep without its gated annotations must not be reused later)
+      if [ -d $R/data/$ds ] && { [ "$ds" != oakink ] || [ -d $R/data/oakink/image/anno ]; }; then
+        tar -cf - -C $R/data $ds | aws s3 cp --quiet - $W/cache/$ds.tar
+      fi
     fi
     touch $R/status/prep_$ds.done
   fi

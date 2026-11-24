@@ -4,6 +4,7 @@ pandas
 pyarrow
 libigl
 trimesh
+pillow
 pyyaml
 boto3
 torch>=2.1

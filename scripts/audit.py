@@ -110,6 +110,8 @@ def main():
                 buf.append(df)
             if err:
                 errs.append(err)  # errored tasks are not marked done, so a rerun retries them
+                if len(errs) <= 3:
+                    print("ERROR", err, flush=True)
             else:
                 buf_tasks.append(task)
             if len(buf_tasks) >= 25:
@@ -117,6 +119,8 @@ def main():
             if (i + 1) % 50 == 0 or i + 1 == len(todo):
                 print(f"  {i + 1}/{len(todo)}  {time.time() - t0:.0f}s  errors={len(errs)}", flush=True)
     flush()
+    if not list(parts.glob("*.parquet")):
+        sys.exit(f"no sequence succeeded ({len(errs)} errors); first: {errs[0] if errs else '-'}")
 
     out = pd.concat([pd.read_parquet(p) for p in sorted(parts.glob("*.parquet"))], ignore_index=True)
 

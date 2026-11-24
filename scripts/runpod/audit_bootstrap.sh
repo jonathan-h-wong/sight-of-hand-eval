@@ -31,7 +31,7 @@ publish() {  # ds out_dir s3_prefix
 
 log "start; vCPU: $(nproc); RAM: $(free -g | awk '/Mem/{print $2}') GB"
 echo RUNNING > $R/status/STATE; push_status
-pip install -q libigl==2.6.3 trimesh pandas pyarrow scipy pyyaml boto3 >> $R/status/pip.log 2>&1 || finish FAILED
+pip install -q libigl==2.6.3 trimesh pillow pandas pyarrow scipy pyyaml boto3 >> $R/status/pip.log 2>&1 || finish FAILED
 apt-get -qq update >/dev/null 2>&1; apt-get -qq install -y unzip >/dev/null 2>&1
 aws s3 cp --quiet $W/code.tar.gz . && rm -rf code && mkdir -p code && tar -xzf code.tar.gz -C code || finish FAILED
 cd code

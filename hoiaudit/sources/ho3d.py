@@ -11,11 +11,13 @@ Conventions (shreyashampali/ho3d vis_HO3D.py):
            m.fullpose directly, i.e. no hands_mean -> flat_hand_mean=True), betas = handBeta, + handTrans.
            Train split only; frames whose handPose is None are untracked.
            Evaluation split: meta carries no hand pose; the released GT vertices (evaluation_verts.json, in the
-           order of evaluation.txt) are used as given. They are in the same camera frame as the meta (checked: their
-           MANO root joint matches the meta's handJoints3D root to 0.9 mm median on AP10; with an OpenGL y/z flip
-           it is 908 mm off), not in the OpenGL frame the challenge predictions use.
+           order of evaluation.txt) are used as given: they are in the same frame as the meta (checked: their MANO
+           root joint matches the meta's handJoints3D root to 0.9 mm median on AP10; flipped, 908 mm off).
   object : verts = v @ Rodrigues(objRot).T + objTrans  (world = R v + t), both splits.
-  Everything is in the camera frame (OpenCV axes for meta), metres; ~30 fps.
+  Everything is in the camera frame with OpenGL axes (y up, z backward: z < 0 in front of the camera), metres, ~30 fps.
+  The audit needs no conversion (hand and object share the frame, and the axis flip is a proper rotation). To project
+  with meta['camMat'], flip first: X_cv = X * (1, -1, -1), as vis_HO3D.py does (checked: fetched grounded hands then land
+  on the rgb frame and on the projected handJoints3D).
   Check (train, 90 frames of ABF10/ABF11): MANO joints match the meta's handJoints3D at 3.3 mm median with
   flat_hand_mean=True (36 mm with False).
 Mask key: <split>/<seq>; frame = int(<frame>) (the meta / rgb file stem).

@@ -36,6 +36,13 @@ from hoiaudit import metrics, s3zip, subset  # noqa: E402
 from hoiaudit.sources import common  # noqa: E402
 
 BUCKET = subset.BUCKET
+AXES = {  # frame of the materialized hands/objects, so a loader can project them onto the images
+    "ho3d": "camera frame, OpenGL axes (z < 0 in front): X_opencv = X * (1, -1, -1), then project with meta camMat",
+    "hoi4d": "camera frame, OpenCV axes: project with camera_params/<cam>/intrin.npy",
+    "dexycb": "master camera frame, OpenCV axes: other cameras via calibration extrinsics",
+    "arctic": "ARCTIC world frame: project with meta/misc.json world2cam + intris_mat per subject and view",
+    "oakink": "camera frame of the evaluated camera (lowest cam id with the frame), OpenCV axes",
+}
 
 
 def task_path(dataset, root, seq):
@@ -100,7 +107,8 @@ def fetch_labels(a, idx, out):
                 arrays[f"{hand}_verts_rectified"] = Vr.astype(np.float32)
                 arrays |= {f"{k}_rectified": v for k, v in extra.items()}
         meta = {"dataset": a.dataset, "seq": seq, "meshes": meshes, "labels": a.labels, "units": "mm",
-                "frame_note": "T_wo maps object base -> the dataset's world/camera frame of the hands"}
+                "frame_note": "T_wo maps object base -> the dataset's world/camera frame of the hands",
+                "axes": AXES.get(a.dataset, "")}
         dst.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(dst, meta=json.dumps(meta), **arrays)
         hs_ok.append(seq)

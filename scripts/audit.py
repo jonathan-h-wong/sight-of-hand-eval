@@ -25,6 +25,11 @@ import json
 import os
 import sys
 import time
+
+# one compute thread per worker process: the pool already uses every core, and BLAS/OpenMP/libigl each defaulting to
+# all cores oversubscribes them (32 workers x 32 threads stalled a 32-vCPU pod; 1.9x slower even at 4 workers).
+for _v in ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "IGL_NUM_THREADS"):
+    os.environ.setdefault(_v, "1")
 from multiprocessing import Pool
 from pathlib import Path
 

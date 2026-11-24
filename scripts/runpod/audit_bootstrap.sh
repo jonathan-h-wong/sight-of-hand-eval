@@ -37,6 +37,7 @@ aws s3 cp --quiet $W/code.tar.gz . && rm -rf code && mkdir -p code && tar -xzf c
 cd code
 bash scripts/prepare_data.sh $R/data mano > $R/status/prep_mano.log 2>&1 || finish FAILED
 M=$R/data/mano/mano_v1_2/models
+export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 IGL_NUM_THREADS=1  # one thread per audit worker
 syncer() { while true; do sleep 300; push_status; done; }
 syncer &
 
@@ -44,8 +45,14 @@ for ds in $DATASETS; do
   out=$R/out/$ds
   if [ -f $R/status/$ds.done ]; then continue; fi
   if [ ! -f $R/status/prep_$ds.done ]; then
-    log "prepare $ds"; push_status
-    bash scripts/prepare_data.sh $R/data $ds > $R/status/prep_$ds.log 2>&1 || finish FAILED
+    if aws s3 ls $W/cache/$ds.tar > /dev/null 2>&1; then  # prepared labels from an earlier run of this job
+      log "prepare $ds (cached)"; push_status
+      aws s3 cp --quiet $W/cache/$ds.tar - | tar -xf - -C $R/data || finish FAILED
+    else
+      log "prepare $ds"; push_status
+      bash scripts/prepare_data.sh $R/data $ds > $R/status/prep_$ds.log 2>&1 || finish FAILED
+      [ -d $R/data/$ds ] && tar -cf - -C $R/data $ds | aws s3 cp --quiet - $W/cache/$ds.tar
+    fi
     touch $R/status/prep_$ds.done
   fi
   if [ "$ds" = oakink ] && [ ! -d $R/data/oakink/image/anno ]; then log "oakink: no annotations, skipped"; continue; fi

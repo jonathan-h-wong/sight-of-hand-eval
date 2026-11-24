@@ -37,6 +37,7 @@ aws s3 cp --quiet $W/code.tar.gz . && rm -rf code && mkdir -p code && tar -xzf c
 cd code
 bash scripts/prepare_data.sh $R/data mano > $R/status/prep_mano.log 2>&1 || finish FAILED
 M=$R/data/mano/mano_v1_2/models
+NW=$(nproc)  # before the export below: nproc honors OMP_NUM_THREADS (and --all would ignore the pod's CPU limit)
 export OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 IGL_NUM_THREADS=1  # one thread per audit worker
 syncer() { while true; do sleep 300; push_status; done; }
 syncer &
@@ -57,7 +58,7 @@ for ds in $DATASETS; do
   fi
   if [ "$ds" = oakink ] && [ ! -d $R/data/oakink/image/anno ]; then log "oakink: no annotations, skipped"; continue; fi
   log "audit $ds"; push_status
-  python -W ignore scripts/audit.py --dataset $ds --root $R/data/$ds --out $out --mano-dir $M --workers $(nproc) \
+  python -W ignore scripts/audit.py --dataset $ds --root $R/data/$ds --out $out --mano-dir $M --workers $NW \
     > $R/status/audit_$ds.log 2>&1 || finish FAILED
   if [ "$ds" = graspxl ]; then
     dst=s3://xray-hands/eval/graspxl/penetration_v2_sample
